@@ -1,0 +1,7 @@
+google-genai
+psycopg[binary]
+python-dotenv
+pytest
+mcp
+fastmcp
+pytest-asyncio
