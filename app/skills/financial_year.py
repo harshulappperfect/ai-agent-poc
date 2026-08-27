@@ -1,28 +1,32 @@
 """Deterministic Indian Financial Year (FY) and Month Conversion Logic.
 
 Financial Year Convention:
-    - Runs from April 1 through March 31.
-    - FY Month 1  = April
-    - FY Month 2  = May
-    - FY Month 3  = June
-    - FY Month 4  = July
-    - FY Month 5  = August
-    - FY Month 6  = September
-    - FY Month 7  = October
-    - FY Month 8  = November
-    - FY Month 9  = December
-    - FY Month 10 = January (following calendar year)
-    - FY Month 11 = February (following calendar year)
-    - FY Month 12 = March (following calendar year)
+    - Runs from October 1 through September 30.
+    - FY Month 1  = October
+    - FY Month 2  = November
+    - FY Month 3  = December
+    - FY Month 4  = January (following calendar year)
+    - FY Month 5  = February (following calendar year)
+    - FY Month 6  = March (following calendar year)
+    - FY Month 7  = April (following calendar year)
+    - FY Month 8  = May (following calendar year)
+    - FY Month 9  = June (following calendar year)
+    - FY Month 10 = July (following calendar year)
+    - FY Month 11 = August (following calendar year)
+    - FY Month 12 = September (following calendar year)
 
 Quarters:
-    - Q1 = Months 1 to 3  (April to June)
-    - Q2 = Months 4 to 6  (July to September)
-    - Q3 = Months 7 to 9  (October to December)
-    - Q4 = Months 10 to 12 (January to March)
+    - Q1 = Months 1 to 3  (October to December)
+    - Q2 = Months 4 to 6  (January to March)
+    - Q3 = Months 7 to 9  (April to June)
+    - Q4 = Months 10 to 12 (July to September)
 """
 
 from __future__ import annotations
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 import re
 from typing import Any
@@ -203,7 +207,7 @@ def calendar_to_financial_year(year: int, month: int) -> str:
     if not isinstance(year, int) or year < 1000 or year > 9999:
         raise ValueError(f"Invalid calendar year: {year}. Year must be a 4-digit integer.")
 
-    if month >= 4:
+    if month >= 10:
         start_year = year
     else:
         start_year = year - 1
@@ -224,7 +228,7 @@ def calendar_to_financial_month(year_or_month: int, month: int | None = None) ->
         month: Optional calendar month (1 to 12).
         
     Returns:
-        int: Financial month number (1 = April, ..., 9 = December, 10 = January, ..., 12 = March).
+        int: Financial month number (1 = October, ..., 3 = December, 4 = January, ..., 12 = September).
         
     Raises:
         ValueError: If calendar month is not between 1 and 12.
@@ -234,10 +238,21 @@ def calendar_to_financial_month(year_or_month: int, month: int | None = None) ->
     if not isinstance(cal_month, int) or not (1 <= cal_month <= 12):
         raise ValueError(f"Invalid calendar month: {cal_month}. Month must be an integer between 1 and 12.")
 
-    if 4 <= cal_month <= 12:
-        return cal_month - 3
+    if 10 <= cal_month <= 12:
+        return cal_month - 9
     else:
-        return cal_month + 9
+        return cal_month + 3
+
+
+def _fy_month_to_calendar(start_year: int, fm: int) -> tuple[int, int, str]:
+    """Helper to convert start_year and financial month number (1-12) to (cal_year, cal_month, month_name)."""
+    if 1 <= fm <= 3:
+        cal_month = fm + 9
+        cal_year = start_year
+    else:
+        cal_month = fm - 3
+        cal_year = start_year + 1
+    return cal_year, cal_month, CALENDAR_MONTH_NAMES[cal_month]
 
 
 def financial_year_to_calendar_month(
@@ -257,15 +272,7 @@ def financial_year_to_calendar_month(
     """
     start_year, _, _ = parse_financial_year(financial_year)
     fm = parse_financial_month(financial_month)
-
-    if 1 <= fm <= 9:
-        cal_month = fm + 3
-        cal_year = start_year
-    else:
-        cal_month = fm - 9
-        cal_year = start_year + 1
-
-    month_name = CALENDAR_MONTH_NAMES[cal_month]
+    cal_year, cal_month, month_name = _fy_month_to_calendar(start_year, fm)
     return f"{month_name} {cal_year}"
 
 
@@ -325,18 +332,11 @@ def convert_financial_month(
             - calendar_month_name (str): Month name (e.g., 'January')
             - calendar_date_month (str): Formatted 'YYYY-MM' (e.g., '2026-01')
     """
-    print(f"[Skill] Executing convert_financial_month(financial_year={financial_year!r}, financial_month={financial_month!r})")
+    logger.info("Executing convert_financial_month(financial_year=%r, financial_month=%r)", financial_year, financial_month)
+
     start_year, _, canonical_fy = parse_financial_year(financial_year)
     fm = parse_financial_month(financial_month)
-
-    if 1 <= fm <= 9:
-        cal_month = fm + 3
-        cal_year = start_year
-    else:
-        cal_month = fm - 9
-        cal_year = start_year + 1
-
-    month_name = CALENDAR_MONTH_NAMES[cal_month]
+    cal_year, cal_month, month_name = _fy_month_to_calendar(start_year, fm)
     calendar_date_month = f"{cal_year:04d}-{cal_month:02d}"
 
     return {
@@ -362,7 +362,8 @@ def convert_calendar_to_financial(year: int, month: int | str) -> dict[str, Any]
     Returns:
         dict: Structured mapping with financial_year, financial_month, quarter, and calendar details.
     """
-    print(f"[Skill] Executing convert_calendar_to_financial(year={year!r}, month={month!r})")
+    logger.info("Executing convert_calendar_to_financial(year=%r, month=%r)", year, month)
+
     if isinstance(month, str):
         cleaned_m = month.strip().lower()
         if cleaned_m.isdigit():
@@ -415,7 +416,7 @@ def convert_financial_quarter(
     Returns:
         dict: Structured mapping with quarter, financial months, calendar 'YYYY-MM' list, and month names.
     """
-    print(f"[Skill] Executing convert_financial_quarter(financial_year={financial_year!r}, quarter={quarter!r})")
+    logger.info("Executing convert_financial_quarter(financial_year=%r, quarter=%r)", financial_year, quarter)
     start_year, _, canonical_fy = parse_financial_year(financial_year)
     fy_months = get_financial_quarter_months(quarter)
 
@@ -427,15 +428,9 @@ def convert_financial_quarter(
     cal_names = []
 
     for fm in fy_months:
-        if 1 <= fm <= 9:
-            cal_m = fm + 3
-            cal_yr = start_year
-        else:
-            cal_m = fm - 9
-            cal_yr = start_year + 1
-
+        cal_yr, cal_m, month_name = _fy_month_to_calendar(start_year, fm)
         cal_dates.append(f"{cal_yr:04d}-{cal_m:02d}")
-        cal_names.append(f"{CALENDAR_MONTH_NAMES[cal_m]} {cal_yr}")
+        cal_names.append(f"{month_name} {cal_yr}")
 
     return {
         "financial_year": canonical_fy,

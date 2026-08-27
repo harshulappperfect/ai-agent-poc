@@ -6,6 +6,9 @@ and actuals data stored in PostgreSQL.
 
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 import re
 from typing import Any
 
@@ -110,7 +113,7 @@ def get_financial_data(org_id: str, month: str | None = None) -> list[dict[str, 
         Use when the user asks for financial records for a specific organization
         or month (e.g., "What was the actual value for ORG001 in March 2026?").
     """
-    print(f"[Tool] Executing get_financial_data(org_id='{org_id}', month={month!r})")
+    logger.info("Executing get_financial_data(org_id=%r, month=%r)", org_id, month)
     clean_org = _validate_org_id(org_id)
     clean_month = _validate_month(month)
 
@@ -159,7 +162,7 @@ def get_org_summary(org_id: str) -> dict[str, Any]:
         Use when the user asks for overall forecast, actual, variance, or financial
         performance for an organization (e.g., "Give me the total forecast and actual for ORG003.").
     """
-    print(f"[Tool] Executing get_org_summary(org_id='{org_id}')")
+    logger.info("Executing get_org_summary(org_id=%r)",org_id)
     clean_org = _validate_org_id(org_id)
 
     query = """
@@ -227,7 +230,7 @@ def compare_forecast(org_id: str, month: str | None = None) -> list[dict[str, An
         Use when the user asks whether actual performance was above or below forecast
         (e.g., "Compare ORG005 forecast against actual for April 2026.").
     """
-    print(f"[Tool] Executing compare_forecast(org_id='{org_id}', month={month!r})")
+    logger.info("Executing compare_forecast(org_id=%r, month=%r)", org_id, month)
     records = get_financial_data(org_id, month)
     results = []
 
@@ -282,7 +285,7 @@ def get_top_variances(limit: int = 5) -> list[dict[str, Any]]:
         Use when the user asks which organization or month had the largest difference
         between forecast and actual (e.g., "Which month had the largest variance?").
     """
-    print(f"[Tool] Executing get_top_variances(limit={limit})")
+    logger.info("Executing get_top_variances(limit=%r)",limit)
     clean_limit = _validate_limit(limit)
 
     query = """

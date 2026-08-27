@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "session_id": "finance-session-001",
+  "summary": "- **Financial Calendar Mapping**: FY2025-26 Financial Month 8 = May 2026 (`2026-05`).\n- **ORG001 Data (Jan 2026 / `2026-01`)**: Actual = 98,000; Forecast = 100,000.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is financial month 8 of FY2025-26?",
+      "timestamp": "2026-08-27T07:02:09.026159+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Financial month 8 of FY2025-26 corresponds to **May 2026** (calendar date: `2026-05`).",
+      "timestamp": "2026-08-27T07:02:13.109251+00:00"
+    },
+    {
+      "role": "user",
+      "content": "tell me the actual value for org001 in jan 2026",
+      "timestamp": "2026-08-27T07:03:46.979332+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "The actual value for ORG001 in January 2026 is **98,000** (with a forecast of 100,000).",
+      "timestamp": "2026-08-27T07:03:50.714081+00:00"
+    },
+    {
+      "role": "user",
+      "content": "What is financial month 8 of FY2025-26?",
+      "timestamp": "2026-08-27T08:52:39.698033+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Financial month 8 of FY2025-26 corresponds to **May 2026** (calendar date: `2026-05`).",
+      "timestamp": "2026-08-27T08:52:43.192843+00:00"
+    },
+    {
+      "role": "user",
+      "content": "What is financial month 8 of FY2025-26?",
+      "timestamp": "2026-08-27T08:55:10.567657+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Financial month 8 of FY2025-26 corresponds to **May 2026** (calendar date: `2026-05`).",
+      "timestamp": "2026-08-27T08:55:12.632544+00:00"
+    }
+  ],
+  "archive": [
+    {
+      "role": "user",
+      "content": "What is financial month 8 of FY2025-26?",
+      "timestamp": "2026-08-27T07:01:41.836577+00:00"
+    },
+    {
+      "role": "assistant",
+      "content": "Financial month 8 of FY2025-26 corresponds to **May 2026** (calendar date: `2026-05`).",
+      "timestamp": "2026-08-27T07:01:45.156920+00:00"
+    }
+  ],
+  "metadata": {
+    "created_at": "2026-08-27T07:01:36.858723+00:00",
+    "updated_at": "2026-08-27T08:55:12.632544+00:00",
+    "compression_count": 1
+  }
+}

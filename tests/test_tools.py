@@ -139,8 +139,8 @@ def test_conversion_tools_in_available_tools():
     assert "convert_calendar_to_financial" in AVAILABLE_TOOLS
     assert "convert_financial_quarter" in AVAILABLE_TOOLS
 
-    # Test invoking convert_financial_month via tools module
-    res = convert_financial_month("FY2025-26", 10)
+    # Test invoking convert_financial_month via tools module (Month 4 = Jan 2026 in Oct-Sept FY)
+    res = convert_financial_month("FY2025-26", 4)
     assert res["calendar_date_month"] == "2026-01"
 
     # Test end-to-end chaining: convert FY month 10 -> pass to get_financial_data

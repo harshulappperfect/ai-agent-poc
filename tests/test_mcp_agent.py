@@ -57,10 +57,10 @@ async def test_mcp_tool_convert_financial_month():
             )
             assert result.content
             data = json.loads(result.content[0].text)
-            assert data["calendar_year"] == 2025
-            assert data["calendar_month"] == 11
-            assert data["calendar_month_name"] == "November"
-            assert data["calendar_date_month"] == "2025-11"
+            assert data["calendar_year"] == 2026
+            assert data["calendar_month"] == 5
+            assert data["calendar_month_name"] == "May"
+            assert data["calendar_date_month"] == "2026-05"
 
 
 @pytest.mark.asyncio
@@ -81,7 +81,7 @@ async def test_mcp_tool_convert_financial_quarter():
             data = json.loads(result.content[0].text)
             assert data["quarter"] == "Q1"
             assert data["financial_months"] == [1, 2, 3]
-            assert data["calendar_months"] == ["2025-04", "2025-05", "2025-06"]
+            assert data["calendar_months"] == ["2025-10", "2025-11", "2025-12"]
 
 
 @pytest.mark.asyncio
@@ -101,8 +101,8 @@ async def test_mcp_tool_convert_calendar_to_financial():
             assert result.content
             data = json.loads(result.content[0].text)
             assert data["financial_year"] == "FY2025-26"
-            assert data["financial_month"] == 11
-            assert data["quarter"] == "Q4"
+            assert data["financial_month"] == 5
+            assert data["quarter"] == "Q2"
 
 
 def test_agent_configuration():
@@ -119,5 +119,5 @@ async def test_agent_mcp_end_to_end_query():
     if not agent.is_configured():
         pytest.skip("Gemini API key not configured.")
 
-    response = await agent.ask_async("What is Indian financial month 8 of FY2025-26?")
-    assert "November" in response or "2025-11" in response
+    response = await agent.ask_async("What is financial month 8 of FY2025-26?")
+    assert "May" in response or "2026-05" in response

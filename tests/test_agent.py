@@ -2,7 +2,7 @@
 
 import pytest
 from app.agent import FinanceAgent, SYSTEM_INSTRUCTION
-from mcp_server.server import AVAILABLE_TOOLS
+from app.tools import AVAILABLE_TOOLS
 
 
 def test_agent_unconfigured_without_api_key():

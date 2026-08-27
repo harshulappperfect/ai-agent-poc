@@ -19,11 +19,21 @@ def display_banner() -> None:
     print("=" * 55)
     print()
     print("Type a finance or financial-year question.")
+    print("Type 'compress memory' to summarize and compact conversation history.")
+    print("Type 'clear' or 'clear memory' to start a fresh context.")
     print("Type 'exit' or 'quit' to end session.\n")
 
 
 async def async_main() -> None:
     """Main CLI execution loop using asynchronous MCP Agent."""
+
+    # Guard: require an interactive terminal (stdin must be a real tty)
+    if not sys.stdin.isatty():
+        print("[Error] This app requires an interactive terminal.")
+        print("[Error] Please run it directly in PowerShell or Command Prompt:")
+        print("[Error]   python -m app.main")
+        sys.exit(1)
+
     display_banner()
     agent = FinanceAgent()
 
@@ -41,6 +51,19 @@ async def async_main() -> None:
             if user_input.lower() in ("exit", "quit", "q"):
                 print("\nGoodbye!")
                 break
+
+            if user_input.lower() in ("clear", "reset", "clear memory"):
+                agent.clear_memory()
+                print("\n[Memory Cleared] Started a fresh conversation context.\n")
+                continue
+
+            if user_input.lower() == "compress memory":
+                print("-" * 55)
+                comp_result = await agent.compress_memory()
+                print(comp_result)
+                print("-" * 55)
+                print()
+                continue
 
             print("-" * 55)
             response = await agent.ask_async(user_input)

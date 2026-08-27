@@ -29,20 +29,20 @@ from app.skills.financial_year import (
 # ====================================================================
 
 def test_all_twelve_months_forward_conversion_fy2025_26():
-    """Verify forward conversion for all 12 months of FY2025-26."""
+    """Verify forward conversion for all 12 months of FY2025-26 (Oct-Sept)."""
     expected_mappings = [
-        (1, "April 2025"),
-        (2, "May 2025"),
-        (3, "June 2025"),
-        (4, "July 2025"),
-        (5, "August 2025"),
-        (6, "September 2025"),
-        (7, "October 2025"),
-        (8, "November 2025"),
-        (9, "December 2025"),
-        (10, "January 2026"),
-        (11, "February 2026"),
-        (12, "March 2026"),
+        (1, "October 2025"),
+        (2, "November 2025"),
+        (3, "December 2025"),
+        (4, "January 2026"),
+        (5, "February 2026"),
+        (6, "March 2026"),
+        (7, "April 2026"),
+        (8, "May 2026"),
+        (9, "June 2026"),
+        (10, "July 2026"),
+        (11, "August 2026"),
+        (12, "September 2026"),
     ]
 
     for fm, expected_str in expected_mappings:
@@ -52,11 +52,11 @@ def test_all_twelve_months_forward_conversion_fy2025_26():
 
 def test_specific_prompt_forward_cases():
     """Verify specific forward conversion test cases required by prompt."""
-    assert financial_year_to_calendar_month("FY2025-26", 1) == "April 2025"
-    assert financial_year_to_calendar_month("FY2025-26", 6) == "September 2025"
-    assert financial_year_to_calendar_month("FY2025-26", 9) == "December 2025"
-    assert financial_year_to_calendar_month("FY2025-26", 10) == "January 2026"
-    assert financial_year_to_calendar_month("FY2025-26", 12) == "March 2026"
+    assert financial_year_to_calendar_month("FY2025-26", 1) == "October 2025"
+    assert financial_year_to_calendar_month("FY2025-26", 4) == "January 2026"
+    assert financial_year_to_calendar_month("FY2025-26", 7) == "April 2026"
+    assert financial_year_to_calendar_month("FY2025-26", 10) == "July 2026"
+    assert financial_year_to_calendar_month("FY2025-26", 12) == "September 2026"
 
 
 # ====================================================================
@@ -67,18 +67,18 @@ def test_all_twelve_months_reverse_conversion_fy2025_26():
     """Verify reverse conversion for all 12 calendar months covering FY2025-26."""
     calendar_to_fm_expected = [
         # (year, cal_month, expected_fy, expected_fm)
-        (2025, 4, "FY2025-26", 1),   # April 2025
-        (2025, 5, "FY2025-26", 2),   # May 2025
-        (2025, 6, "FY2025-26", 3),   # June 2025
-        (2025, 7, "FY2025-26", 4),   # July 2025
-        (2025, 8, "FY2025-26", 5),   # August 2025
-        (2025, 9, "FY2025-26", 6),   # September 2025
-        (2025, 10, "FY2025-26", 7),  # October 2025
-        (2025, 11, "FY2025-26", 8),  # November 2025
-        (2025, 12, "FY2025-26", 9),  # December 2025
-        (2026, 1, "FY2025-26", 10),  # January 2026
-        (2026, 2, "FY2025-26", 11),  # February 2026
-        (2026, 3, "FY2025-26", 12),  # March 2026
+        (2025, 10, "FY2025-26", 1),  # October 2025
+        (2025, 11, "FY2025-26", 2),  # November 2025
+        (2025, 12, "FY2025-26", 3),  # December 2025
+        (2026, 1, "FY2025-26", 4),   # January 2026
+        (2026, 2, "FY2025-26", 5),   # February 2026
+        (2026, 3, "FY2025-26", 6),   # March 2026
+        (2026, 4, "FY2025-26", 7),   # April 2026
+        (2026, 5, "FY2025-26", 8),   # May 2026
+        (2026, 6, "FY2025-26", 9),   # June 2026
+        (2026, 7, "FY2025-26", 10),  # July 2026
+        (2026, 8, "FY2025-26", 11),  # August 2026
+        (2026, 9, "FY2025-26", 12),  # September 2026
     ]
 
     for yr, cal_m, exp_fy, exp_fm in calendar_to_fm_expected:
@@ -89,12 +89,12 @@ def test_all_twelve_months_reverse_conversion_fy2025_26():
 
 def test_specific_prompt_reverse_cases():
     """Verify specific reverse conversion test cases required by prompt."""
-    assert calendar_to_financial_year(2025, 4) == "FY2025-26"
-    assert calendar_to_financial_year(2026, 3) == "FY2025-26"
-    assert calendar_to_financial_month(2025, 4) == 1
-    assert calendar_to_financial_month(2025, 12) == 9
-    assert calendar_to_financial_month(2026, 1) == 10
-    assert calendar_to_financial_month(2026, 3) == 12
+    assert calendar_to_financial_year(2025, 10) == "FY2025-26"
+    assert calendar_to_financial_year(2026, 9) == "FY2025-26"
+    assert calendar_to_financial_month(2025, 10) == 1
+    assert calendar_to_financial_month(2025, 12) == 3
+    assert calendar_to_financial_month(2026, 1) == 4
+    assert calendar_to_financial_month(2026, 9) == 12
 
 
 # ====================================================================
@@ -113,16 +113,16 @@ def test_specific_prompt_reverse_cases():
 )
 def test_multiple_financial_years(fy_str, start_yr, end_yr):
     """Verify calculations work seamlessly across multiple past and future financial years."""
-    # Month 1 is always April of start_year
-    assert financial_year_to_calendar_month(fy_str, 1) == f"April {start_yr}"
-    # Month 10 is always January of end_year
-    assert financial_year_to_calendar_month(fy_str, 10) == f"January {end_yr}"
-    # Month 12 is always March of end_year
-    assert financial_year_to_calendar_month(fy_str, 12) == f"March {end_yr}"
+    # Month 1 is always October of start_year
+    assert financial_year_to_calendar_month(fy_str, 1) == f"October {start_yr}"
+    # Month 4 is always January of end_year
+    assert financial_year_to_calendar_month(fy_str, 4) == f"January {end_yr}"
+    # Month 12 is always September of end_year
+    assert financial_year_to_calendar_month(fy_str, 12) == f"September {end_yr}"
 
     # Reverse
-    assert calendar_to_financial_year(start_yr, 4) == fy_str
-    assert calendar_to_financial_year(end_yr, 3) == fy_str
+    assert calendar_to_financial_year(start_yr, 10) == fy_str
+    assert calendar_to_financial_year(end_yr, 9) == fy_str
 
 
 # ====================================================================
@@ -166,9 +166,9 @@ def test_parse_financial_year_variations(input_val, expected_start, expected_end
         ("financial month 4", 4),
         ("FY month 12", 12),
         ("FM 6", 6),
-        ("April", 1),
-        ("January", 10),
-        ("March", 12),
+        ("October", 1),
+        ("January", 4),
+        ("September", 12),
     ],
 )
 def test_parse_financial_month_variations(month_input, expected_fm):
@@ -192,15 +192,15 @@ def test_financial_quarters():
     assert q1_data["financial_year"] == "FY2025-26"
     assert q1_data["quarter"] == "Q1"
     assert q1_data["financial_months"] == [1, 2, 3]
-    assert q1_data["calendar_months"] == ["2025-04", "2025-05", "2025-06"]
-    assert q1_data["calendar_month_names"] == ["April 2025", "May 2025", "June 2025"]
+    assert q1_data["calendar_months"] == ["2025-10", "2025-11", "2025-12"]
+    assert q1_data["calendar_month_names"] == ["October 2025", "November 2025", "December 2025"]
 
     q4_data = convert_financial_quarter("FY2025-26", "Q4")
     assert q4_data["financial_year"] == "FY2025-26"
     assert q4_data["quarter"] == "Q4"
     assert q4_data["financial_months"] == [10, 11, 12]
-    assert q4_data["calendar_months"] == ["2026-01", "2026-02", "2026-03"]
-    assert q4_data["calendar_month_names"] == ["January 2026", "February 2026", "March 2026"]
+    assert q4_data["calendar_months"] == ["2026-07", "2026-08", "2026-09"]
+    assert q4_data["calendar_month_names"] == ["July 2026", "August 2026", "September 2026"]
 
 
 # ====================================================================
@@ -209,24 +209,24 @@ def test_financial_quarters():
 
 def test_convert_financial_month_tool_output():
     """Verify convert_financial_month tool produces exact structured dictionary."""
-    result = convert_financial_month("FY2025-26", 10)
+    result = convert_financial_month("FY2025-26", 4)
     assert result == {
         "financial_year": "FY2025-26",
-        "financial_month": 10,
+        "financial_month": 4,
         "calendar_year": 2026,
         "calendar_month": 1,
         "calendar_month_name": "January",
         "calendar_date_month": "2026-01",
     }
 
-    result_apr = convert_financial_month("FY2025-26", 1)
-    assert result_apr == {
+    result_oct = convert_financial_month("FY2025-26", 1)
+    assert result_oct == {
         "financial_year": "FY2025-26",
         "financial_month": 1,
         "calendar_year": 2025,
-        "calendar_month": 4,
-        "calendar_month_name": "April",
-        "calendar_date_month": "2025-04",
+        "calendar_month": 10,
+        "calendar_month_name": "October",
+        "calendar_date_month": "2025-10",
     }
 
 
@@ -238,8 +238,8 @@ def test_convert_calendar_to_financial_tool_output():
         "calendar_month": 1,
         "calendar_month_name": "January",
         "financial_year": "FY2025-26",
-        "financial_month": 10,
-        "quarter": "Q4",
+        "financial_month": 4,
+        "quarter": "Q2",
     }
 
     result_dec = convert_calendar_to_financial(2026, "December")
@@ -248,8 +248,8 @@ def test_convert_calendar_to_financial_tool_output():
         "calendar_month": 12,
         "calendar_month_name": "December",
         "financial_year": "FY2026-27",
-        "financial_month": 9,
-        "quarter": "Q3",
+        "financial_month": 3,
+        "quarter": "Q1",
     }
 
 

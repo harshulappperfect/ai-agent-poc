@@ -142,12 +142,8 @@ python -m pytest
 │       ├── __init__.py
 │       └── financial_year.py    # Deterministic Indian FY date converter
 ├── mcp_server/
-│   ├── database.py              # Database helpers re-export
 │   ├── server.py                # FastMCP server with @mcp.tool() decorators
-│   ├── test_client.py           # CLI MCP test client
-│   └── tools.py                 # Tools registry re-export
-├── skills/
-│   └── financial_year_skill.md  # Skill specification & Indian FY convention docs
+│   └── test_client.py           # CLI MCP test client
 ├── tests/
 │   ├── test_agent.py            # Agent configuration & tool registry tests
 │   ├── test_financial_year.py   # 40 comprehensive Indian FY unit tests

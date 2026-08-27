@@ -6,6 +6,9 @@ for financial forecasts and actuals data.
 
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -16,8 +19,11 @@ from dotenv import load_dotenv
 import psycopg
 from psycopg.rows import dict_row
 
-# Load environment variables from .env
-load_dotenv()
+# At module level, after imports
+FORBIDDEN_KEYWORDS = {"insert", "update", "delete", "drop", "truncate", "alter", "create"}
+
+# Load environment variables from .env (override stale shell env vars)
+load_dotenv(override=True)
 
 
 def get_db_config() -> dict[str, Any]:
@@ -78,6 +84,12 @@ def get_connection() -> Generator[psycopg.Connection, None, None]:
             conn.close()
 
 
+def _validate_query_safety(query: str) -> None:
+    """Ensure query contains no forbidden write/modification keywords."""
+    if any(kw in query.lower().split() for kw in FORBIDDEN_KEYWORDS):
+        raise ValueError("Write operations are not permitted.")
+
+
 def execute_query(query: str, params: tuple | list | dict | None = None) -> list[dict[str, Any]]:
     """Execute a parameterized SELECT query and return all rows as dicts.
     
@@ -88,15 +100,16 @@ def execute_query(query: str, params: tuple | list | dict | None = None) -> list
     Returns:
         List of row dictionaries with serialized data.
     """
+    _validate_query_safety(query)
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(query, params)
                 rows = cur.fetchall()
-                print("[PostgreSQL] Query executed successfully")
+                logger.info("Query executed successfully")
                 return [_serialize_row(row) for row in rows]
     except Exception as e:
-        print(f"[PostgreSQL] Query execution failed: {e}")
+        logger.info("Query execution failed: %r", e)
         raise
 
 
@@ -110,13 +123,14 @@ def execute_single_query(query: str, params: tuple | list | dict | None = None) 
     Returns:
         Single row dictionary with serialized data, or None if no result.
     """
+    _validate_query_safety(query)
     try:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(query, params)
                 row = cur.fetchone()
-                print("[PostgreSQL] Query executed successfully")
+                logger.info("Query executed successfully")
                 return _serialize_row(row)
     except Exception as e:
-        print(f"[PostgreSQL] Query execution failed: {e}")
+        logger.info("Query execution failed: %r", e)
         raise

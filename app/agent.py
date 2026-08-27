@@ -7,6 +7,9 @@ tool calls exclusively through the MCP server.
 
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger(__name__)
+
 import asyncio
 import json
 import os
@@ -22,17 +25,21 @@ from google.genai import types
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-# Load environment variables
-load_dotenv()
+from app.memory import MemoryManager
+
+# Load environment variables (override stale shell env vars)
+load_dotenv(override=True)
+
+MEMORY_COMPRESSION_THRESHOLD = 30
 
 SYSTEM_INSTRUCTION = """You are a finance data assistant for an Agentic AI proof-of-concept.
 
 You answer questions using only financial data retrieved through the provided MCP tools.
 
-Indian Financial Year (FY) Convention:
-- An Indian Financial Year runs from April 1 to March 31.
-- FY month numbering: Month 1 = April, Month 2 = May, Month 3 = June, Month 4 = July, Month 5 = August, Month 6 = September, Month 7 = October, Month 8 = November, Month 9 = December, Month 10 = January (of next calendar year), Month 11 = February, Month 12 = March.
-- Quarters: Q1 (Apr-Jun / Months 1-3), Q2 (Jul-Sep / Months 4-6), Q3 (Oct-Dec / Months 7-9), Q4 (Jan-Mar / Months 10-12).
+Financial Year (FY) Convention:
+- A Financial Year runs from October 1 to September 30.
+- FY month numbering: Month 1 = October, Month 2 = November, Month 3 = December, Month 4 = January (of next calendar year), Month 5 = February, Month 6 = March, Month 7 = April, Month 8 = May, Month 9 = June, Month 10 = July, Month 11 = August, Month 12 = September.
+- Quarters: Q1 (Oct-Dec / Months 1-3), Q2 (Jan-Mar / Months 4-6), Q3 (Apr-Jun / Months 7-9), Q4 (Jul-Sep / Months 10-12).
 
 Workflow for Financial-Year / Month Questions:
 - When a user question contains financial-year or financial-month terminology (e.g., 'FY2025-26', 'FY25-26', 'financial month 10', 'FY month 4', 'fiscal year', 'Q1 FY2025-26'):
@@ -108,13 +115,14 @@ class FinanceAgent:
         api_key: str | None = None,
         model: str | None = None,
         server_script: str | Path | None = None,
+        memory_filepath: str | Path | None = None,
     ):
         if api_key is not None:
             self.api_key = api_key.strip()
         else:
             self.api_key = os.getenv("GEMINI_API_KEY", "").strip()
 
-        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+        self.model = model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite").strip()
 
         if not self.api_key or self.api_key in ("CHANGE_ME", "your_gemini_api_key_here"):
             self.client = None
@@ -129,10 +137,121 @@ class FinanceAgent:
             self.server_script = Path(server_script).resolve()
 
         self.discovered_tools: list[str] = []
+        self.chat_session: Any = None
+        self.memory_manager = MemoryManager(filepath=memory_filepath)
 
     def is_configured(self) -> bool:
         """Check whether the Gemini API key is configured."""
         return self.client is not None
+
+    def clear_memory(self) -> None:
+        """Clear the conversational memory and start a fresh session."""
+        self.chat_session = None
+        self.memory_manager.clear_memory()
+        logger.info("Conversational memory cleared.")
+
+    def build_context(self, current_query: str) -> str:
+        """Construct prompt context combining stored compressed summary,
+        recent conversation history, and current user question.
+        """
+        summary = self.memory_manager.get_summary().strip()
+        all_messages = self.memory_manager.get_all_messages()
+
+        # Build list of prior messages excluding current question if already in memory
+        recent_msgs = []
+        for msg in all_messages:
+            if (
+                msg.get("role") == "user"
+                and msg.get("content") == current_query
+                and msg == all_messages[-1]
+            ):
+                continue
+            recent_msgs.append(msg)
+
+        context_parts = []
+        if summary:
+            context_parts.append(f"COMPRESSED HISTORICAL MEMORY:\n{summary}")
+
+        if recent_msgs:
+            history_lines = []
+            for m in recent_msgs:
+                role_label = "User" if m.get("role") == "user" else "Assistant"
+                history_lines.append(f"{role_label}: {m.get('content', '')}")
+            context_parts.append("RECENT CONVERSATION:\n" + "\n".join(history_lines))
+
+        context_parts.append(f"CURRENT USER QUESTION:\n{current_query}")
+        return "\n\n".join(context_parts)
+
+    async def compress_memory(self) -> str:
+        """Manually or automatically compact historical memory using Gemini.
+        
+        Summarizes active conversation history into a compact summary,
+        archives older raw messages into JSON, and increments compression count.
+        """
+        if not self.is_configured():
+            return "Gemini API key is not configured. Cannot compress memory."
+
+        summary = self.memory_manager.get_summary()
+        all_messages = self.memory_manager.get_all_messages()
+
+        if not all_messages and not summary:
+            return "[Memory] No active conversation messages to compress."
+
+        prompt_parts = []
+        if summary:
+            prompt_parts.append(f"EXISTING SUMMARY:\n{summary}")
+
+        if all_messages:
+            history_lines = []
+            for m in all_messages:
+                role = "User" if m.get("role") == "user" else "Assistant"
+                history_lines.append(f"{role}: {m.get('content', '')}")
+            prompt_parts.append("CONVERSATION HISTORY TO COMPRESS:\n" + "\n".join(history_lines))
+
+        prompt = "\n\n".join(prompt_parts)
+
+        summarization_instruction = (
+            "You are a financial memory compaction assistant.\n"
+            "Your task is to summarize the preceding financial conversation into a concise, information-dense summary.\n\n"
+            "PRESERVE ACCURATELY:\n"
+            "- Organization IDs (e.g., ORG001, ORG003)\n"
+            "- Financial years (e.g., FY2025-26), months, quarters\n"
+            "- Financial values, actuals, forecasts, budget numbers, and variances\n"
+            "- Specific user goals, requests, or questions asked\n"
+            "- Important database findings or MCP tool results\n"
+            "- Unresolved questions or key constraints needed for follow-up questions\n\n"
+            "DISCARD:\n"
+            "- Greetings, pleasantries, repetitive chatter\n"
+            "- Duplicated explanation text\n"
+            "- Unnecessary conversational filler\n\n"
+            "Return ONLY the updated compressed summary text."
+        )
+
+        try:
+            config = types.GenerateContentConfig(
+                system_instruction=summarization_instruction,
+                temperature=0.2,
+            )
+            res = await self.client.aio.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=config,
+            )
+            new_summary = (res.text or "").strip()
+            if not new_summary:
+                return "[Error] Gemini returned an empty summary. Existing memory preserved."
+
+            # Update summary and archive summarized active messages
+            self.memory_manager.update_summary_and_archive(new_summary, keep_recent_count=4)
+            self.chat_session = None  # Reset chat session state
+            return (
+                f"[Memory] Conversation compressed successfully. "
+                f"Compression count: {self.memory_manager.get_compression_count()}."
+            )
+        except Exception as e:
+            err_msg = _format_error(e)
+            logger.error("Failed to compress memory: %s", err_msg)
+            return f"[Error] Memory compression failed: {err_msg}. Existing memory preserved."
 
     async def ask_async(self, query: str) -> str:
         """Process a user query asynchronously using MCP tool calling.
@@ -145,6 +264,20 @@ class FinanceAgent:
         """
         if not self.is_configured():
             return "Gemini API key is not configured. Add GEMINI_API_KEY to your .env file."
+
+        # Save user query to persistent memory
+        self.memory_manager.add_user_message(query)
+
+        # Check threshold for automatic memory compression
+        if len(self.memory_manager.get_all_messages()) >= MEMORY_COMPRESSION_THRESHOLD:
+            logger.info("Memory threshold reached (%d messages). Auto-compressing memory...", MEMORY_COMPRESSION_THRESHOLD)
+            await self.compress_memory()
+
+        # Build augmented prompt context from summary, history, and query
+        context_prompt = self.build_context(query)
+
+        # Reset chat session for fresh turn with persistent context
+        self.chat_session = None
 
         # Setup MCP stdio server parameters
         server_params = StdioServerParameters(
@@ -180,10 +313,15 @@ class FinanceAgent:
                     )
 
                     # 3. Execute chat session with MCP tool loop
-                    return await self._execute_mcp_chat(session, query, self.model, config)
+                    final_response = await self._execute_mcp_chat(session, context_prompt, self.model, config)
+
+                    # Save assistant response to persistent memory
+                    self.memory_manager.add_assistant_message(final_response)
+                    return final_response
 
         except BaseException as e:
             return _format_error(e)
+
 
     def ask(self, query: str) -> str:
         """Synchronous wrapper for ask_async for CLI and test compatibility."""
@@ -199,6 +337,29 @@ class FinanceAgent:
         else:
             return asyncio.run(self.ask_async(query))
 
+    async def _send_with_retry(self, chat: Any, message: Any) -> Any:
+        """Send a message to Gemini chat with rate-limit retry and backoff logic."""
+        max_attempts = 2
+        for attempt in range(max_attempts):
+            try:
+                return await chat.send_message(message)
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                    wait_sec = int(float(match.group(1))) + 1 if match else 3
+                    # Fail fast if Google requests a long wait time (>5s) or if retry attempt reached
+                    if wait_sec > 5 or attempt >= (max_attempts - 1):
+                        raise
+                    logger.info("[Gemini Rate Limit] Waiting %d s for quota reset...", wait_sec)
+                    await asyncio.sleep(wait_sec)
+                    continue
+                if "503" in err_str and attempt < (max_attempts - 1):
+                    logger.info("[Gemini Service Unavailable] Retrying...")
+                    await asyncio.sleep(2)
+                    continue
+                raise
+
     async def _execute_mcp_chat(
         self,
         session: ClientSession,
@@ -206,27 +367,12 @@ class FinanceAgent:
         model_name: str,
         config: types.GenerateContentConfig,
     ) -> str:
-        """Execute multi-turn tool interaction loop over MCP stdio session."""
-        chat = self.client.chats.create(model=model_name, config=config)
+        """Execute multi-turn interaction with persistent conversational memory over MCP stdio session."""
+        if self.chat_session is None:
+            self.chat_session = self.client.aio.chats.create(model=model_name, config=config)
 
         # Initial prompt to Gemini with backoff
-        for attempt in range(4):
-            try:
-                response = chat.send_message(query)
-                break
-            except Exception as e:
-                err_str = str(e)
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                    match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
-                    wait_sec = int(float(match.group(1))) + 1 if match else 5
-                    if attempt < 3:
-                        print(f"[Gemini Rate Limit] Waiting {wait_sec}s for free tier quota reset...")
-                        await asyncio.sleep(wait_sec)
-                        continue
-                if "503" in err_str and attempt < 3:
-                    await asyncio.sleep(2)
-                    continue
-                raise
+        response = await self._send_with_retry(self.chat_session, query)
 
         max_turns = 6
         turns = 0
@@ -237,7 +383,7 @@ class FinanceAgent:
                 fn_name = call.name
                 fn_args = dict(call.args) if call.args else {}
 
-                print(f"\n[MCP Client -> Server] Calling tool: '{fn_name}' with args: {fn_args}")
+                logger.info("[MCP Client -> Server] Calling tool: '%s' with args: %s", fn_name, fn_args)
 
                 # Call tool via Model Context Protocol
                 try:
@@ -254,33 +400,26 @@ class FinanceAgent:
                         parsed_res = res_text
 
                 except Exception as tool_err:
-                    print(f"[MCP Tool Error]: {tool_err}")
+                    logger.info("MCP Tool Error: %r", tool_err)
                     parsed_res = {"error": str(tool_err)}
 
                 # Send tool response back to Gemini with backoff
-                for attempt in range(4):
-                    try:
-                        response = chat.send_message(
-                            types.Part.from_function_response(
-                                name=fn_name,
-                                response={"result": parsed_res},
-                            )
-                        )
-                        break
-                    except Exception as e:
-                        err_str = str(e)
-                        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                            match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
-                            wait_sec = int(float(match.group(1))) + 1 if match else 5
-                            if attempt < 3:
-                                print(f"[Gemini Rate Limit] Waiting {wait_sec}s for free tier quota reset...")
-                                await asyncio.sleep(wait_sec)
-                                continue
-                        if "503" in err_str and attempt < 3:
-                            await asyncio.sleep(2)
-                            continue
-                        raise
+                func_part = types.Part.from_function_response(
+                    name=fn_name,
+                    response={"result": parsed_res},
+                )
+                response = await self._send_with_retry(self.chat_session, func_part)
 
-        final_text = response.text or "No response generated."
-        print(f"\n[Gemini Response]\n{final_text}\n")
+        final_text = (response.text or "").strip()
+        if not final_text and hasattr(response, "candidates") and response.candidates:
+            try:
+                parts = response.candidates[0].content.parts or []
+                text_parts = [p.text for p in parts if getattr(p, "text", None)]
+                if text_parts:
+                    final_text = "\n".join(text_parts).strip()
+            except Exception:
+                pass
+
+        final_text = final_text or "No response generated."
+        logger.info("Gemini Response:\n%s", final_text)
         return final_text
