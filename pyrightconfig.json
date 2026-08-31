@@ -1,0 +1,5 @@
+{
+  "extraPaths": [
+    "plugins/finance-agent/server"
+  ]
+}

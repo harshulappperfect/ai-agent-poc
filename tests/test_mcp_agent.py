@@ -11,12 +11,12 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from app.agent import FinanceAgent
 
-SERVER_SCRIPT = Path(__file__).resolve().parent.parent / "mcp_server" / "server.py"
+SERVER_SCRIPT = Path(__file__).resolve().parent.parent / "plugins" / "finance-agent" / "server" / "server.py"
 
 
 @pytest.mark.asyncio
 async def test_mcp_server_tool_discovery():
-    """Verify FastMCP server exposes all 7 required tools via MCP protocol."""
+    """Verify FastMCP server exposes all required tools via MCP protocol."""
     server_params = StdioServerParameters(
         command=sys.executable,
         args=[str(SERVER_SCRIPT)],
@@ -24,7 +24,7 @@ async def test_mcp_server_tool_discovery():
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             init_res = await session.initialize()
-            assert init_res.serverInfo.name == "Finance MCP Server"
+            assert init_res.serverInfo.name == "Finance Agent Plugin Server"
 
             tools_resp = await session.list_tools()
             tool_names = {t.name for t in tools_resp.tools}

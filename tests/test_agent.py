@@ -1,8 +1,15 @@
 """Automated tests for Gemini AI Agent configuration and MCP tool integration."""
 
+import sys
+from pathlib import Path
+
+SERVER_DIR = Path(__file__).resolve().parent.parent / "plugins" / "finance-agent" / "server"
+if str(SERVER_DIR) not in sys.path:
+    sys.path.insert(0, str(SERVER_DIR))
+
 import pytest
 from app.agent import FinanceAgent, SYSTEM_INSTRUCTION
-from app.tools import AVAILABLE_TOOLS
+from tools import AVAILABLE_TOOLS  # type: ignore  # pyright: ignore[reportMissingImports]
 
 
 def test_agent_unconfigured_without_api_key():
@@ -15,9 +22,9 @@ def test_agent_unconfigured_without_api_key():
 
 def test_agent_system_instruction():
     """Verify system instructions contain key constraints."""
-    assert "You are a finance data assistant" in SYSTEM_INSTRUCTION
-    assert "Never generate or execute arbitrary SQL" in SYSTEM_INSTRUCTION
-    assert "Never invent financial values" in SYSTEM_INSTRUCTION
+    assert "You are an enterprise Financial Analyst AI" in SYSTEM_INSTRUCTION
+    assert "Never attempt write or modification queries" in SYSTEM_INSTRUCTION
+    assert "Database Schema Overview" in SYSTEM_INSTRUCTION
 
 
 def test_tool_declarations_match_available_tools():
@@ -32,5 +39,8 @@ def test_tool_declarations_match_available_tools():
         "convert_financial_month",
         "convert_calendar_to_financial",
         "convert_financial_quarter",
+        "get_database_schema",
+        "run_read_only_query",
     }
     assert declared_names == expected_tools
+

@@ -10,8 +10,15 @@ Validates:
     - Input validation and error handling for invalid months, years, and formats
 """
 
+import sys
+from pathlib import Path
+
+SERVER_DIR = Path(__file__).resolve().parent.parent / "plugins" / "finance-agent" / "server"
+if str(SERVER_DIR) not in sys.path:
+    sys.path.insert(0, str(SERVER_DIR))
+
 import pytest
-from app.skills.financial_year import (
+from financial_year import (  # type: ignore  # pyright: ignore[reportMissingImports]
     calendar_to_financial_month,
     calendar_to_financial_year,
     convert_calendar_to_financial,

@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 import re
 from typing import Any
 
-from app.database import execute_query, execute_single_query
-from app.skills.financial_year import (
+from database import execute_query, execute_single_query
+from financial_year import (
     convert_calendar_to_financial,
     convert_financial_month,
     convert_financial_quarter,
@@ -312,6 +312,69 @@ def get_top_variances(limit: int = 5) -> list[dict[str, Any]]:
         row["variance_percentage"] = float(row["variance_percentage"])
     return rows
 
+def get_database_schema() -> dict[str, Any]:
+    """Retrieve detailed database schema for all 9 relational tables.
+    
+    Tool Name:
+        get_database_schema
+        
+    Purpose:
+        Inspect table names, column names, data types, primary keys, and
+        foreign key relationships across the relational database.
+        
+    Returns:
+        dict: Schema mapping containing table names and column metadata.
+    """
+    logger.info("Executing get_database_schema()")
+    query = """
+        SELECT 
+            c.table_name,
+            c.column_name,
+            c.data_type,
+            c.is_nullable
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'public'
+        ORDER BY c.table_name, c.ordinal_position;
+    """
+    rows = execute_query(query)
+    
+    tables: dict[str, list[dict[str, str]]] = {}
+    for r in rows:
+        tbl = r["table_name"]
+        if tbl not in tables:
+            tables[tbl] = []
+        tables[tbl].append({
+            "column": r["column_name"],
+            "type": r["data_type"],
+            "nullable": r["is_nullable"],
+        })
+        
+    return {
+        "database": "mydatabase",
+        "tables_count": len(tables),
+        "schema": tables,
+    }
+
+
+def run_read_only_query(query: str) -> list[dict[str, Any]]:
+    """Execute a safe, read-only SQL query (SELECT or WITH) across database tables.
+    
+    Tool Name:
+        run_read_only_query
+        
+    Purpose:
+        Execute dynamic SELECT queries containing JOINs, GROUP BY, aggregations
+        (SUM, AVG, COUNT, MIN, MAX), subqueries, or Common Table Expressions (WITH).
+        
+    Parameters:
+        query (str): A valid read-only SQL SELECT or WITH statement.
+        
+    Returns:
+        list[dict]: List of row dictionaries (max 100 rows).
+    """
+    logger.info("Executing run_read_only_query: %s", query)
+    return execute_query(query)
+
 
 # Registry of permitted tools
 AVAILABLE_TOOLS = {
@@ -322,5 +385,8 @@ AVAILABLE_TOOLS = {
     "convert_financial_month": convert_financial_month,
     "convert_calendar_to_financial": convert_calendar_to_financial,
     "convert_financial_quarter": convert_financial_quarter,
+    "get_database_schema": get_database_schema,
+    "run_read_only_query": run_read_only_query,
 }
+
 

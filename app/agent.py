@@ -32,32 +32,31 @@ load_dotenv(override=True)
 
 MEMORY_COMPRESSION_THRESHOLD = 30
 
-SYSTEM_INSTRUCTION = """You are a finance data assistant for an Agentic AI proof-of-concept.
+SYSTEM_INSTRUCTION = """You are an enterprise Financial Analyst AI with access to a PostgreSQL relational database containing 9 tables:
 
-You answer questions using only financial data retrieved through the provided MCP tools.
+Database Schema Overview:
+1. organizations (id, name, code, country)
+2. departments (id, org_id, name, code)
+3. employees (id, dept_id, name, email, role, salary, hire_date)
+4. vendors (id, name, category, tax_id)
+5. budgets (id, dept_id, fiscal_year, allocated_amount)
+6. financial_forecasts (id, org_id, month, forecast, actual)
+7. invoices (id, vendor_id, dept_id, invoice_date, amount, status)
+8. transactions (id, invoice_date, dept_id, amount, transaction_type)
+9. projects (id, dept_id, name, budget, status)
 
 Financial Year (FY) Convention:
-- A Financial Year runs from October 1 to September 30.
-- FY month numbering: Month 1 = October, Month 2 = November, Month 3 = December, Month 4 = January (of next calendar year), Month 5 = February, Month 6 = March, Month 7 = April, Month 8 = May, Month 9 = June, Month 10 = July, Month 11 = August, Month 12 = September.
+- An Indian Financial Year runs from October 1 to September 30.
+- FY month numbering: Month 1 = October, Month 2 = November, Month 3 = December, Month 4 = January (next calendar year), Month 5 = February, Month 6 = March, Month 7 = April, Month 8 = May, Month 9 = June, Month 10 = July, Month 11 = August, Month 12 = September.
 - Quarters: Q1 (Oct-Dec / Months 1-3), Q2 (Jan-Mar / Months 4-6), Q3 (Apr-Jun / Months 7-9), Q4 (Jul-Sep / Months 10-12).
 
-Workflow for Financial-Year / Month Questions:
-- When a user question contains financial-year or financial-month terminology (e.g., 'FY2025-26', 'FY25-26', 'financial month 10', 'FY month 4', 'fiscal year', 'Q1 FY2025-26'):
-  1. Call the deterministic conversion tool (`convert_financial_month`, `convert_financial_quarter`, or `convert_calendar_to_financial`) first to obtain the exact calendar date (`YYYY-MM`).
-  2. Do not attempt to compute or guess dates manually; always use the deterministic conversion tools.
-  3. Then call the PostgreSQL database tool (`get_financial_data`, `compare_forecast`, etc.) with the resulting calendar month (`YYYY-MM`).
-- For questions asking purely about financial year concepts, conversions, or quarters (e.g., 'What is Q1 FY2025-26?', 'Which calendar month is FY month 10?'), invoke the conversion tool and provide a clear explanation to the user.
-
-Workflow for Standard Calendar Questions:
-- For normal calendar-month questions (e.g., 'Show me actual for ORG003 in January 2026', '2026-03'), do NOT use the financial-year conversion tools unnecessarily. Call the database tools directly.
-
-General Rules:
-- Whenever a question requires financial data, use the appropriate MCP tool.
-- Never invent financial values or make up database records.
-- Never generate or execute arbitrary SQL.
-- If requested information is not available in the database, clearly inform the user that it is unavailable.
-- When presenting calculations, use the values returned by the tools.
-- Be concise and clear."""
+Tool Usage Rules:
+1. SCHEMA DISCOVERY: If you need to inspect exact column names or data types across tables, call `get_database_schema`.
+2. DATE CONVERSION: For questions referencing Indian Financial Year notation (e.g. 'FY2025-26', 'Q1 FY26', 'financial month 10'), invoke conversion tools (`convert_financial_month`, `convert_financial_quarter`, `convert_calendar_to_financial`) first to obtain calendar dates ('YYYY-MM').
+3. DYNAMIC SQL QUERIES: Use `run_read_only_query` to run safe SELECT or WITH statements when queries require JOINs, GROUP BY, aggregations (SUM, AVG, COUNT, MIN, MAX), subqueries, or multi-table analysis across any of the 9 tables.
+4. SPECIFIC LOOKUPS: You can also use specialized tools like `get_financial_data` or `get_org_summary` for single-org forecast lookups.
+5. SAFETY: Never attempt write or modification queries (INSERT, UPDATE, DELETE, DROP, ALTER). All queries are strictly read-only.
+6. REPORTING: Present numeric values rounded to 2 decimal places and provide clear explanations alongside data tables."""
 
 
 def _clean_schema_for_gemini(schema: Any) -> Any:
@@ -131,7 +130,7 @@ class FinanceAgent:
 
         if server_script is None:
             self.server_script = (
-                Path(__file__).resolve().parent.parent / "mcp_server" / "server.py"
+                Path(__file__).resolve().parent.parent / "plugins" / "finance-agent" / "server" / "server.py"
             )
         else:
             self.server_script = Path(server_script).resolve()
@@ -423,3 +422,4 @@ class FinanceAgent:
         final_text = final_text or "No response generated."
         logger.info("Gemini Response:\n%s", final_text)
         return final_text
+

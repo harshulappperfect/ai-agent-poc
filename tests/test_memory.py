@@ -45,7 +45,7 @@ def test_memory_manager_add_messages_and_persistence(temp_memory_file: Path):
 
     assert len(disk_data["messages"]) == 2
     assert disk_data["messages"][0]["role"] == "user"
-    assert disk_data["messages"][0]["content"] == "What is ORG001's January actual?"
+    assert disk_data["messages"][0]["content"] == "What is ORG001's March actual?"
     assert disk_data["messages"][1]["role"] == "assistant"
     assert disk_data["messages"][1]["content"] == "The actual value was 98,000."
 

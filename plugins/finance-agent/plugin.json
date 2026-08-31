@@ -1,0 +1,5 @@
+{
+    "name": "finance-agent",
+    "version": "1.0.0",
+    "description": "Reusable Agent Plugin providing financial data analysis, PostgreSQL tools, and Indian Financial Year skills."
+}
